@@ -11,7 +11,14 @@ lazy_static! {
             ("true",    TokenType::True),
             ("false",   TokenType::False),
             ("while",   TokenType::While),
+            ("for",     TokenType::For),
             ("var",     TokenType::Var),
+            ("print",   TokenType::Print),
+            ("class",   TokenType::Class),
+            ("super",   TokenType::Super),
+            ("nil",     TokenType::Nil),
+            ("return",  TokenType::Return),
+            ("this",    TokenType::This),
         ])
     };
 }
