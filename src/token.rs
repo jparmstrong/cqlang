@@ -1,10 +1,26 @@
-use std::str::Chars;
+use std::collections::HashMap;
+
+lazy_static! {
+    static ref HASHMAP: HashMap<&'static str, TokenType> = {
+        HashMap::from([
+            ("and",     TokenType::And),
+            ("or",      TokenType::Or),
+            ("if",      TokenType::If),
+            ("else",    TokenType::Else),
+            ("fun",     TokenType::Fun),
+            ("true",    TokenType::True),
+            ("false",   TokenType::False),
+            ("while",   TokenType::While),
+            ("var",     TokenType::Var),
+        ])
+    };
+}
 
 #[derive(Clone, Debug)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen, RightParen, LeftBrace, RightBrace,
-    Comma, Dot, Minus, Plus, Semicolon, Slash, Star,
+    Comma, Dot, Minus, Plus, Semicolon, Slash, Star, Colon,
 
     // One or two character tokens.
     Bang, BangEqual,
@@ -26,6 +42,7 @@ pub enum TokenType {
 pub struct Token {
     toktype: TokenType,
     lexeme: String,
+    number: f64,
     line: u32
 }
 
@@ -40,16 +57,17 @@ pub struct Tokenizer {
 impl Tokenizer {
 
     fn advance(&mut self) -> char {
-        let r = match self.source[self.current..(self.current+1)].first() {
-            Some(x) => *x,
-            None => '\0'
-        };
+        let r = self.peeki(1);
         self.current+=1;
         r
     }
 
     fn peek(&self) -> char {
-        match self.source[self.current..(self.current+1)].first() {
+        self.peeki(1)
+    }
+
+    fn peeki(&self, i: usize) -> char {
+        match self.source[self.current..(self.current+i)].last() {
             Some(x) => *x,
             None => '\0'
         }
@@ -67,29 +85,60 @@ impl Tokenizer {
     }
 
     fn add_token(&mut self, toktype : TokenType) {
-        let t = Token { toktype: toktype, lexeme: String::new(), line: self.line };
+        let t = Token { toktype: toktype, lexeme: String::new(), line: self.line, number: 0. };
         self.tokens.push(t);
     }
 
-    fn is_alpha(c: &str) -> bool {
-        c >= "a" && c <= "z" ||
-        c >= "A" && c <= "Z" ||
-        c >= "_"
+    fn add_token_number(&mut self, lexeme: String) {
+        let num = lexeme.parse::<f64>().unwrap();
+        let t = Token { toktype: TokenType::Number, lexeme: lexeme, line: self.line, number: num };
+        self.tokens.push(t);
     }
 
-    fn is_numeric(c: &str) -> bool {
-        c >= "0" && c <= "9"
+    fn add_token_identifer(&mut self, lexeme: String) {
+
+        let tokentype = match HASHMAP.get(&*lexeme) {
+            Some(x) => x.clone(),
+            None => TokenType::Identifier
+        };
+
+        let t = Token { toktype: tokentype, lexeme: lexeme, line: self.line, number: 0. };
+        self.tokens.push(t);
     }
 
-    fn number() {
+    fn is_alpha(&self, c: char) -> bool {
+        c >= 'a' && c <= 'z' ||
+        c >= 'A' && c <= 'Z' ||
+        c >= '_'
+    }
 
+    fn alpha(&mut self) {
+        while self.is_alpha(self.peek()) { self.advance(); };
+        let lexeme: String = self.source[self.start..self.current].iter().collect();
+        self.add_token_identifer(lexeme)
+    }
+
+    fn is_numeric(&self, c: char) -> bool {
+        c >= '0' && c <= '9'
+    }
+
+    fn number(&mut self) {
+        while self.is_numeric(self.peek()) { self.advance(); };
+
+        if self.peek() == '.' && self.is_numeric(self.peeki(2)) {
+            self.advance();
+
+            while self.is_numeric(self.peek()) { self.advance(); };
+        }
+        let lexeme: String = self.source[self.start..self.current].iter().collect();
+        self.add_token_number(lexeme);
     }
 
     fn scan(&mut self) {
         while !self.is_at_end() {
             self.start = self.current;
             let c = self.advance();
-            print!("[{}]", c);
+
             match c {
                 '(' => self.add_token(TokenType::LeftParen),
                 ')' => self.add_token(TokenType::RightParen),
@@ -100,6 +149,7 @@ impl Tokenizer {
                 '-' => self.add_token(TokenType::Minus),
                 '+' => self.add_token(TokenType::Plus),
                 ';' => self.add_token(TokenType::Semicolon),
+                ':' => self.add_token(TokenType::Colon),
                 '/' => self.add_token(TokenType::Slash),
                 '*' => self.add_token(TokenType::Star),
                 '!' =>
@@ -126,8 +176,8 @@ impl Tokenizer {
                     } else {
                         self.add_token(TokenType::Less)
                     },
-                'a'..='z' | 'A'..='Z' | '_'  => self.number(),
-                '0'..='9' => (),
+                'a'..='z' | 'A'..='Z' | '_' => { self.alpha() },
+                '0'..='9' => { self.number() },
                 ' ' | '\t' | '\r' => (),
                 '\n' => self.line+=1,
                 _ => print!("!{}!", c as u32),
