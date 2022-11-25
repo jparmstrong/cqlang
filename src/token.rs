@@ -106,7 +106,7 @@ impl Tokenizer {
 
         let tokentype = match HASHMAP.get(&*lexeme) {
             Some(x) => x.clone(),
-            None => TokenType::Identifier
+            None => TokenType::String
         };
 
         let t = Token { toktype: tokentype, lexeme: lexeme, line: self.line, number: 0. };
@@ -141,6 +141,18 @@ impl Tokenizer {
         self.add_token_number(lexeme);
     }
 
+    fn string(&mut self) {
+        while self.peek() != '"' {
+            if self.peek() == '\n' {
+                self.line+=1;
+            }
+            self.advance();
+        };
+        let lexeme: String = self.source[(self.start+1)..(self.current)].iter().collect();
+        self.add_token_identifer(lexeme);
+        self.advance();
+    }
+
     fn scan(&mut self) {
         while !self.is_at_end() {
             self.start = self.current;
@@ -160,7 +172,7 @@ impl Tokenizer {
                 '/' => self.add_token(TokenType::Slash),
                 '*' => self.add_token(TokenType::Star),
                 '!' =>
-                   if self.pmatch('=') {
+                    if self.pmatch('=') {
                         self.add_token(TokenType::BangEqual)
                     } else {
                         self.add_token(TokenType::Bang)
@@ -183,6 +195,7 @@ impl Tokenizer {
                     } else {
                         self.add_token(TokenType::Less)
                     },
+                '"' => { self.string() },
                 'a'..='z' | 'A'..='Z' | '_' => { self.alpha() },
                 '0'..='9' => { self.number() },
                 ' ' | '\t' | '\r' => (),

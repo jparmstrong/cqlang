@@ -6,7 +6,6 @@ mod token;
 use std::io::{self, Write};
 use token::*;
 
-
 fn main() {
     repl();
 }
