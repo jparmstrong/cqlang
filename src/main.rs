@@ -12,8 +12,8 @@ fn main() {
 
 fn run(source: &String) -> Vec<Token> {
     let r = build_tokenizer(source);
-    println!("");
-    io::stdout().flush().unwrap();
+    //println!("");
+    //io::stdout().flush().unwrap();
     r
 }
 
@@ -30,7 +30,7 @@ fn repl() {
                     return;
                 }
                 let output = run(&input);
-                print!("{:?}", output);
+                println!("{:?}", output);
             }
             Err(err) => println!("Error! {}", err),
         }
